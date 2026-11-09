@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tess-utils"
+dynamic = ["version"]
+description = "Shared converters for the Tesserae projects (private; not released on PyPI)."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.14"
+authors = [{ name = "Mind Derivative" }]
+dependencies = []
+classifiers = [
+    "Private :: Do Not Upload",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Repository = "https://github.com/mindderivative/tess-utils"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.10", "setuptools>=70"]
+
+[tool.hatch.version]
+path = "src/tess_utils/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tess_utils"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+
+[tool.uv]
+# Stay on the system CPython (3.14.9, with the GIL); uv would otherwise pick the free-threaded build.
+python-preference = "only-system"
