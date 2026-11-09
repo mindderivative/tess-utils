@@ -12,7 +12,7 @@ from tess_utils.enums import to_tre_word
 from tess_utils.radius import expand_radius
 from tess_utils.sides import expand_sides, to_tre_order
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "__version__",

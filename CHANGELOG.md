@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- The release now carries a type stub, `tess_utils.pyi`, beside the `.so` (made by `mypy.stubgen` from the merged module) so a consumer's mypy can read the compiled file. The stamp lists the SHA-256 of both files.
+- `vendor.json`: the manifest a consumer's sync script reads (package, repository, stamp and the files to copy; `{soabi}` is the consumer's Python tag). The sync script itself lives in each consumer.
+- No change to the converters.
+
 ## 0.1.0 (unreleased)
 
 The first slice (tess-utils Brief). Pure functions; the 0.1 modules import only the standard library.

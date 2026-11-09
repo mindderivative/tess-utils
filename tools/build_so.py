@@ -1,13 +1,16 @@
-"""Build the release file: one compiled ``tess_utils`` ``.so`` (maintainer, 2026-11-08).
+"""Build the release files: one compiled ``tess_utils`` ``.so`` (maintainer, 2026-11-08), its
+stub and its stamp.
 
     uv run python tools/build_so.py            # builds into build/so and prints the stamp
     uv run python tools/build_so.py --test     # ... and runs the test suite against the .so
 
-``mypyc`` compiles several modules into one shared library plus a small shim ``.so`` per module, which
-is not one file. A single module becomes a single file, so the independent 0.1 modules are merged into
-one ``tess_utils.py`` first (``tess_utils.color`` and the like are not importable from the compiled
-file; the public names of the package are). The stamp ``tess_utils.stamp.json`` records the version, the
-Python tag and the SHA-256 of the file, which a consumer checks before it carries the file.
+``mypyc`` compiles several modules into one shared library plus a small shim ``.so`` per module,
+which is not one file. A single module becomes a single file, so the independent 0.1 modules are
+merged into one ``tess_utils.py`` first (``tess_utils.color`` and the like are not importable from
+the compiled file; the public names of the package are). ``tess_utils.pyi`` is the type stub a
+consumer's mypy reads beside the file. The stamp ``tess_utils.stamp.json`` records the version, the
+Python tag, and the SHA-256 of the file and of the stub, which a consumer checks before it carries
+them (``vendor.json`` names the files a consumer copies).
 """
 
 from __future__ import annotations
@@ -89,11 +92,24 @@ def build() -> Path:
         raise SystemExit(f"expected one .so, found {[p.name for p in built]} and {extra}")
     target = OUT / built[0].name
     shutil.copy2(built[0], target)
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from mypy.stubgen import main; main()",
+            "-q",
+            "-o",
+            str(work),
+            str(work / "tess_utils.py"),
+        ],
+        check=True,
+    )
+    shutil.copy2(work / "tess_utils.pyi", OUT / "tess_utils.pyi")
     shutil.rmtree(work)
     return target
 
 
-def stamp(so: Path) -> dict[str, str]:
+def stamp(so: Path) -> dict[str, object]:
     version = ast.literal_eval(
         next(
             line.split("=", 1)[1].strip()
@@ -101,12 +117,17 @@ def stamp(so: Path) -> dict[str, str]:
             if line.startswith("__version__")
         )
     )
+    stub = so.parent / "tess_utils.pyi"
     data = {
         "name": so.name,
         "version": version,
         "python": sysconfig.get_config_var("SOABI") or "",
         "platform": platform.machine(),
         "sha256": hashlib.sha256(so.read_bytes()).hexdigest(),
+        "files": {
+            so.name: hashlib.sha256(so.read_bytes()).hexdigest(),
+            stub.name: hashlib.sha256(stub.read_bytes()).hexdigest(),
+        },
     }
     (OUT / "tess_utils.stamp.json").write_text(json.dumps(data, indent=2) + "\n")
     return data

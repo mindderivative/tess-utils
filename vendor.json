@@ -1,0 +1,6 @@
+{
+  "package": "tess_utils",
+  "repo": "mindderivative/tess-utils",
+  "stamp": "tess_utils.stamp.json",
+  "files": ["tess_utils.{soabi}.so", "tess_utils.pyi"]
+}
