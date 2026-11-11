@@ -28,12 +28,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "tess_utils"
-MODULES = ("color", "sides", "radius", "enums")  # independent of one another
+MODULES = ("color", "sides", "radius", "enums", "image")  # independent of one another
 OUT = ROOT / "build" / "so"
 
 
 def merged_source() -> str:
-    """One module with the four modules' code and the package's public names."""
+    """One module with the modules' code and the package's public names."""
     imports: set[str] = set()
     parts: list[str] = []
     for name in MODULES:
@@ -63,6 +63,7 @@ def merged_source() -> str:
     names = sorted(
         [
             "__version__",
+            "decode_image",
             "expand_radius",
             "expand_sides",
             "parse_color",

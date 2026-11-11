@@ -9,13 +9,15 @@ from __future__ import annotations
 
 from tess_utils.color import parse_color
 from tess_utils.enums import to_tre_word
+from tess_utils.image import decode_image
 from tess_utils.radius import expand_radius
 from tess_utils.sides import expand_sides, to_tre_order
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
+    "decode_image",
     "expand_radius",
     "expand_sides",
     "parse_color",
