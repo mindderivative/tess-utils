@@ -147,6 +147,11 @@ def test_other_formats_say_what_is_accepted() -> None:
         decode_image(_save(Image.new("RGB", (4, 4)), "BMP"))
 
 
+def test_unidentifiable_bytes_say_what_is_accepted() -> None:
+    with pytest.raises(ValueError, match="not a png, jpeg, gif or webp image"):
+        decode_image(b"just some text")
+
+
 def test_over_max_side_fails_before_decoding() -> None:
     # 4097x1 greyscale compresses to a tiny file; the header is enough to refuse it
     data = _save(Image.new("L", (4097, 1)), "PNG")

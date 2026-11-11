@@ -70,6 +70,8 @@ def decode_image(data: object, max_side: object = 4096) -> tuple[int, int, bytes
         if type(error) is ValueError:
             raise
         raise ValueError(f"cannot read the image: {error}") from None
+    except Image.UnidentifiedImageError:
+        raise ValueError("not a png, jpeg, gif or webp image") from None
     except Exception as error:  # OSError, SyntaxError, EOFError, struct.error, warnings as errors
         raise ValueError(f"cannot read the image: {type(error).__name__}: {error}") from None
     return (out_w, out_h, pixels)
