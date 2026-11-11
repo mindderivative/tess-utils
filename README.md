@@ -1,7 +1,7 @@
 # tess-utils
 
 Shared converters for the Tesserae projects (`tess-shell`, Tesserae UI). It is private, it is not
-released on PyPI, and it has no dependencies: tre stays a rendering engine with one entry form, and
+released on PyPI, and its converters have no dependencies (only `decode_image` needs Pillow, see below): tre stays a rendering engine with one entry form, and
 the forms a TDL file writes (colours, four-sided values, corner radii, enum words) are turned into
 that form here, once.
 
@@ -15,6 +15,12 @@ to_tre_order(expand_sides({"Left": 24})) # (0.0, 0.0, 0.0, 24.0)
 expand_radius([0, 0, 8, 8])              # (0.0, 0.0, 8.0, 8.0)
 to_tre_word("SPACE_BETWEEN")             # "space_between"
 ```
+
+`decode_image(data, max_side=4096)` turns the bytes of a PNG, JPEG, GIF or WebP file into
+`(width, height, rgba)` (straight-alpha RGBA8, top row first: tre's `image` node). Pillow is imported
+inside the function, so `import tess_utils` never loads it, and it is not in the compiled file: the
+caller installs it (`pip install tess-utils[image]`, `Pillow>=11`). A side over `max_side` is
+refused from the header, before any pixel is decoded; every failure is a `ValueError`.
 
 ## What belongs here
 

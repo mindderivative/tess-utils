@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- New `tess_utils.image` with `decode_image(data, max_side=4096)`: the bytes of a PNG, JPEG, GIF or WebP image to `(width, height, rgba)`, straight-alpha RGBA8 with rows from top to bottom (what tre's `image` node takes). First frame of an animated GIF or WebP; EXIF orientation applied; palette, greyscale, CMYK and 16-bit images converted to RGBA (palette transparency kept). The header size is checked against `max_side` before any pixel is decoded; Pillow's decompression-bomb warning is an error for the call only (no global state changed).
+- Every failure is a `ValueError` (wrong argument types, empty/corrupt/truncated data, another format, zero size, over the limit); no Pillow exception escapes, in the source and in the `.so`.
+- Pillow is imported inside the function, never at import time, and stays outside the compiled `.so`: it is the optional extra `image` (`Pillow>=11`) and a dev dependency. `tests/test_no_imports.py` now allows Pillow only inside `image.py`'s function.
+- `tools/build_so.py` merges `image` too and lists `decode_image` among the public names.
+
 ## 0.1.1
 
 - The release now carries a type stub, `tess_utils.pyi`, beside the `.so` (made by `mypy.stubgen` from the merged module) so a consumer's mypy can read the compiled file. The stamp lists the SHA-256 of both files.
