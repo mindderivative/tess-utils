@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2
 
 Additive: every colour and image call that worked in 0.2.1 still works, with the two exceptions named
 under "Changed results".

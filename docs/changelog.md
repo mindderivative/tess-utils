@@ -4,7 +4,7 @@ The changelog is `CHANGELOG.md` in the repository root; this page is a copy kept
 (MkDocs only builds pages under `docs/`). Edit `CHANGELOG.md`, then run
 `python3 tools/sync_changelog.py`.
 
-## Unreleased
+## 0.2.2
 
 Additive: every colour and image call that worked in 0.2.1 still works, with the two exceptions named
 under "Changed results".

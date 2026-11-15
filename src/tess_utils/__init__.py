@@ -13,7 +13,7 @@ from tess_utils.image import decode_image, decode_image_file
 from tess_utils.radius import expand_radius
 from tess_utils.sides import expand_sides, to_tre_order
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 __all__ = [
     "__version__",
