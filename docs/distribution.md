@@ -33,4 +33,10 @@ file, so `tools/build_so.py` first merges the independent modules (`color`, `sid
 `enums`, `image`) into one. `tess_utils.color` and the like are therefore not importable from the
 compiled file; the package's public names are.
 
-A tag (`vX.Y.Z`) and a release file are the maintainer's to make.
+## Automation
+
+`ci.yml` runs on every push to `main` and every pull request: the tests, lint and types, the wheel
+in a clean environment, the compiled build with the suite run against it, and the docs build.
+`release.yml` runs on a `vX.Y.Z` tag: the same checks, then the wheel and sdist go to PyPI (after
+the `pypi` environment's approval) and a GitHub release carries the wheel, the sdist and the
+compiled file with its stub and stamp. A tag and the approval are the maintainer's to make.

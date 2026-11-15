@@ -1,8 +1,15 @@
 # Changelog
 
 The changelog is `CHANGELOG.md` in the repository root; this page is a copy kept for the site
-(MkDocs only builds pages under `docs/`). Edit `CHANGELOG.md` and copy it here.
+(MkDocs only builds pages under `docs/`). Edit `CHANGELOG.md`, then run
+`python3 tools/sync_changelog.py`.
 
+## 0.2.1
+
+- The package is published to PyPI as `tesserae-utils` (the import name stays `tess_utils`; the repository stays `tess-utils`). The classifier `Private :: Do Not Upload` is gone; the project metadata is otherwise unchanged.
+- `.github/workflows/release.yml` publishes a `vX.Y.Z` tag to PyPI with Trusted Publishing and attaches the compiled single file (`tess_utils.<soabi>.so`, `tess_utils.pyi`, `tess_utils.stamp.json`) to the GitHub release; CI (`ci.yml`) runs the tests, lint and types, the wheel smoke test, the compiled build against the suite, and the docs build; the docs deploy to GitHub Pages.
+- `tools/sync_changelog.py` keeps the docs site's changelog page a copy of this file.
+- No change to any converter: results are the same as 0.2.0.
 
 ## 0.2.0
 
