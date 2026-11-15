@@ -1,0 +1,7 @@
+# Agent-harness plans and editor settings, not project content.
+.omp/
+.pi/
+.vscode/
+# Build output (the compiled .so, its stub and stamp) and the built docs site are not source.
+build/
+site/

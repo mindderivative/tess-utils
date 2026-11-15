@@ -1,0 +1,49 @@
+site_name: tess-utils
+site_description: >-
+  Shared converters for the Tesserae projects: the value forms a TDL file writes, turned into the
+  one form tre takes.
+site_url: https://mindderivative.github.io/tess-utils/
+repo_url: https://github.com/mindderivative/tess-utils
+repo_name: mindderivative/tess-utils
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - tables
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+
+nav:
+  - Home: index.md
+  - Reference: reference.md
+  - Distribution: distribution.md
+  - Changelog: changelog.md
