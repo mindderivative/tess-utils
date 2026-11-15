@@ -1,8 +1,11 @@
 # Distribution
 
-`tess-utils` is not released on PyPI (maintainer's decision, 2026-11-08; the source repository
-became public on 2026-11-15 and the decision stands). The package metadata carries the classifier
-`Private :: Do Not Upload`.
+`tess-utils` is published to PyPI as `tesserae-utils` (import name `tess_utils`) by
+`.github/workflows/release.yml`: Trusted Publishing from this repository, workflow `release.yml`,
+environment `pypi`, on a `vX.Y.Z` tag. The PyPI release is the source package (a wheel and an
+sdist). Before this the project was private and distributed only as the compiled file below
+(maintainer, 2026-11-08); the PyPI name was added by the maintainer on 2026-11-15 and the compiled
+file stays the way the Tesserae consumers carry it.
 
 A release is one compiled file, built with `mypyc`:
 

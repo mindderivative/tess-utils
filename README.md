@@ -1,7 +1,8 @@
 # tess-utils
 
-Shared converters for the Tesserae projects (`tess-shell`, Tesserae UI). It is private, it is not
-released on PyPI, and its converters have no dependencies (only `decode_image` needs Pillow, see below): tre stays a rendering engine with one entry form, and
+Shared converters for the Tesserae projects (`tess-shell`, Tesserae UI). It is on PyPI as
+`tesserae-utils` (the repository is `tess-utils`), and its converters have no dependencies (only
+`decode_image` needs Pillow, see below): tre stays a rendering engine with one entry form, and
 the forms a TDL file writes (colours, four-sided values, corner radii, enum words) are turned into
 that form here, once.
 
@@ -19,7 +20,7 @@ to_tre_word("SPACE_BETWEEN")             # "space_between"
 `decode_image(data, max_side=4096)` turns the bytes of a PNG, JPEG, GIF or WebP file into
 `(width, height, rgba)` (straight-alpha RGBA8, top row first: tre's `image` node). Pillow is imported
 inside the function, so `import tess_utils` never loads it, and it is not in the compiled file: the
-caller installs it (`pip install tess-utils[image]`, `Pillow>=11`). A side over `max_side` is
+caller installs it (`pip install tesserae-utils[image]`, `Pillow>=11`). A side over `max_side` is
 refused from the header, before any pixel is decoded; every failure is a `ValueError`.
 
 ## What belongs here
@@ -36,10 +37,11 @@ UV_PROJECT_ENVIRONMENT=~/Projects/pyDev/pyEnvs/tess-utils uv sync
 uv run ruff check src tests && uv run mypy && uv run pytest -q
 ```
 
-Versions are git tags (`v0.1.0`) and `CHANGELOG.md`. Distribution (maintainer, 2026-11-08): a release
-is one compiled `.so` (`mypyc`), a file on a GitHub release of the private repository, which each
-consumer downloads, checks against its SHA-256 and carries in `_vendor/` with a stamp. See
-`tools/build_so.py`.
+Versions are git tags (`v0.1.0`) and `CHANGELOG.md`. A release is published to PyPI as
+`tesserae-utils` by `.github/workflows/release.yml` (Trusted Publishing, on a `vX.Y.Z` tag, with an
+approval in the `pypi` environment). Separately, the Tesserae consumers carry a compiled copy
+(maintainer, 2026-11-08): one `.so` (`mypyc`), a file on a GitHub release, which each consumer
+downloads, checks against its SHA-256 and carries in `_vendor/` with a stamp. See `tools/build_so.py`.
 
 The sync script that copies a release into a consumer (`vendor.json` manifest plus a short script in
 each consumer, the vault's recommendation C) is not written yet: it is open question 3 of the

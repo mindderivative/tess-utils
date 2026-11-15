@@ -775,7 +775,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tess-utils"
+name = "tesserae-utils"
 source = { editable = "." }
 
 [package.optional-dependencies]

@@ -1,0 +1,92 @@
+name: Release
+
+# Publishes to PyPI as `tesserae-utils` (import name `tess_utils`) with Trusted Publishing (OpenID
+# Connect): no API token is stored anywhere. The pending publisher on PyPI names this repository,
+# this workflow file and the environment `pypi`; the environment's reviewer approves each upload.
+#
+#   * push a tag `vX.Y.Z`   -> checks, build, publish to PyPI (after approval), then a GitHub release
+#   * run it by hand        -> checks and build only; nothing is published
+#
+# The compiled single-file release for the Tesserae consumers (tools/build_so.py) is a separate,
+# manual artifact and is not built here.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: false
+      - name: The tag, pyproject.toml and tess_utils.__version__ agree
+        run: |
+          python3 - <<'PY'
+          import os, re, tomllib
+          meta = tomllib.load(open("pyproject.toml", "rb"))
+          assert meta["project"]["name"] == "tesserae-utils", meta["project"]["name"]
+          version = re.search(r'__version__ = "([^"]+)"', open("src/tess_utils/__init__.py").read()).group(1)
+          if os.environ["GITHUB_REF_TYPE"] == "tag":
+              tag = os.environ["GITHUB_REF_NAME"]
+              assert tag == f"v{version}", f"tag {tag} != v{version}"
+          heading = re.compile(rf"^## {re.escape(version)}( |$)", re.M)
+          assert heading.search(open("CHANGELOG.md").read()), f"CHANGELOG.md has no section for {version}"
+          print("version", version)
+          PY
+      - run: uv sync --python 3.14
+      - run: uv run ruff check src tests tools
+      - run: uv run ruff format --check src tests tools
+      - run: uv run mypy
+      - run: uv run pytest -q
+      - run: uv build --out-dir dist
+      - name: The wheel imports in a clean environment and pulls in nothing else
+        run: |
+          uv venv --python 3.14 /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python dist/*.whl
+          cd /tmp && /tmp/smoke/bin/python -I -c "import sys, tess_utils; print(tess_utils.__version__); bad = [m for m in sys.modules if m.split('.')[0] in ('PIL', 'tess_re', 'tess_el', 'tess_dl', 'tess_ui', 'tess_shell')]; assert not bad, bad"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    if: github.ref_type == 'tag'
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: The changelog section of this version is the release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$1 == "##" && $2 == v {on=1; next} /^## / && on {exit} on' CHANGELOG.md | head -c 100000 > notes.md
+          test -s notes.md
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
