@@ -17,7 +17,7 @@
 ## Skills, tools and hooks
 * **Session start:** run `tools/status.sh` (branch, unpushed work, version, mailbox, graph), then read the memory entity for this project.
 * **Tools:** `tools/build_so.py` builds the release files; `tools/status.sh`; `tools/graphify_agents.py` and `tools/graphify_refresh.sh` (below).
-* **Hooks** (`.claude/hooks/`, registered in `.claude/settings.json`): `bash_guard.sh` blocks `git push`, `uv publish`, `twine upload` and `gh release create`, and lints staged Python before a commit; `ruff_edit.sh` and `tests_after_edit.sh` run after each edit under `src/`, `tests/` or `tools/`. Both use the venv above. The mailbox hooks are in `.claude/settings.local.json`.
+* **Hooks** (`.claude/hooks/`, registered in `.claude/settings.json`): `bash_guard.sh` blocks `uv publish`, `twine upload` and `gh release create`, and lints staged Python before a commit; `ruff_edit.sh` and `tests_after_edit.sh` run after each edit under `src/`, `tests/` or `tools/`. Both use the venv above. The mailbox hooks are in `.claude/settings.local.json`.
 * **Graphify:** `graphify-out/` is a local code graph (ignored by git). A `Stop` hook (`tools/graphify_refresh.sh`) rebuilds it when a `.py` or docs file changed. Do not run `graphify claude install`; after upgrading graphify run `python3 tools/graphify_agents.py`, which keeps the `## graphify` section below and the PreToolUse hooks current.
 
 ## Documentation Policy

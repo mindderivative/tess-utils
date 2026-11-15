@@ -1,11 +1,11 @@
 #!/bin/sh
-# PreToolUse (Bash): AGENTS.md allows local commits only. Block anything that publishes (git push,
-# a release, a PyPI upload); before a `git commit`, check the staged Python files (pyflakes level).
+# PreToolUse (Bash): AGENTS.md allows commits and pushes of commits. Block anything else that publishes
+# (a release, a PyPI upload); before a `git commit`, check the staged Python files (pyflakes level).
 cd "$CLAUDE_PROJECT_DIR" || exit 0
 cmd=$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))')
 sep='(^|[;&|[:space:]])'
-if printf '%s' "$cmd" | grep -Eq "${sep}git[[:space:]]+([^;&|]*[[:space:]])?push([[:space:]]|\$)|${sep}(twine[[:space:]]+upload|uv[[:space:]]+publish|gh[[:space:]]+release[[:space:]]+create)"; then
-  echo "Blocked: publishing (push, release, PyPI upload) needs a separate, human-gated instruction (AGENTS.md). Commit locally only." >&2
+if printf '%s' "$cmd" | grep -Eq "${sep}(twine[[:space:]]+upload|uv[[:space:]]+publish|gh[[:space:]]+release[[:space:]]+create)"; then
+  echo "Blocked: publishing (release, PyPI upload) needs a separate, human-gated instruction (AGENTS.md)." >&2
   exit 2
 fi
 if printf '%s' "$cmd" | grep -Eq "${sep}git[[:space:]]+commit([[:space:]]|\$)"; then
