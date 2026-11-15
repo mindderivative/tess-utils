@@ -6,7 +6,7 @@ four-sided values, corner radii, enum words, image files) are turned into that f
 so no consumer repeats the conversion.
 
 Import name `tess_utils`. Python 3.14 or later. MIT. The converters have no dependencies; only
-`decode_image` needs Pillow, and it imports it inside the function.
+`decode_image` and `decode_image_file` need Pillow, and import it inside the function.
 
 ```python
 from tess_utils import expand_radius, expand_sides, parse_color, to_tre_order, to_tre_word

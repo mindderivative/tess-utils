@@ -12,16 +12,28 @@ Import name `tess_utils`. Python 3.14 or later. MIT.
 from tess_utils import expand_radius, expand_sides, parse_color, to_tre_order, to_tre_word
 
 parse_color("#89b4fa80")                 # (137, 180, 250, 128)
+parse_color("RebeccaPurple")             # (102, 51, 153, 255)
+parse_color("oklch(0.7 0.1 200 / 50%)")  # (64, 177, 183, 128)
 to_tre_order(expand_sides({"Left": 24})) # (0.0, 0.0, 0.0, 24.0)
 expand_radius([0, 0, 8, 8])              # (0.0, 0.0, 8.0, 8.0)
 to_tre_word("SPACE_BETWEEN")             # "space_between"
 ```
 
+`parse_color` reads the colour the way `tess_re` does, so the Tesserae projects agree on every
+string: hex (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`), the 148 CSS colour names and `transparent`,
+`rgb()`/`rgba()`/`hsl()`/`hsla()` in CSS Color 4 syntax (comma or space, alpha after a slash,
+percentages, out-of-range values clipped), and the wide-gamut functions `color()`, `lab()`, `lch()`,
+`oklab()`, `oklch()` and `hwb()`, clipped into sRGB. Errors use `tess_re`'s wording.
+
 `decode_image(data, max_side=4096)` turns the bytes of a PNG, JPEG, GIF or WebP file into
-`(width, height, rgba)` (straight-alpha RGBA8, top row first: tre's `image` node). Pillow is imported
-inside the function, so `import tess_utils` never loads it, and it is not in the compiled file: the
-caller installs it (`pip install tesserae-utils[image]`, `Pillow>=11`). A side over `max_side` is
-refused from the header, before any pixel is decoded; every failure is a `ValueError`.
+`(width, height, rgba)` (straight-alpha RGBA8, top row first: tre's `image` node), and
+`decode_image_file(path)` does the same for a file. Pillow is imported inside the functions, so
+`import tess_utils` never loads it, and it is not in the compiled file: the caller installs it
+(`pip install tesserae-utils[image]`, `Pillow>=11`). `decode_image` refuses a side over `max_side`
+from the header, before any pixel is decoded; `max_side=None` sets no limit, and
+`decode_image_file` has none unless given one: the consumer decides what is too large. Every
+`decode_image` failure is a `ValueError`; `decode_image_file` raises an `OSError` naming the path
+for a file it cannot read or decode.
 
 ## What belongs here
 

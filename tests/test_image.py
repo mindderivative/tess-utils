@@ -1,11 +1,12 @@
 import io
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from PIL import Image
 
-from tess_utils import decode_image
+from tess_utils import decode_image, decode_image_file
 
 
 def _save(img: Image.Image, fmt: str, **kw: object) -> bytes:
@@ -176,7 +177,7 @@ def test_wrong_data_type(data: object) -> None:
         decode_image(data)
 
 
-@pytest.mark.parametrize("max_side", [True, 4096.0, "4096", None, 0, -1])
+@pytest.mark.parametrize("max_side", [True, 4096.0, "4096", 0, -1])
 def test_wrong_max_side(max_side: object) -> None:
     with pytest.raises(ValueError, match="max_side"):
         decode_image(b"x", max_side)
@@ -185,3 +186,54 @@ def test_wrong_max_side(max_side: object) -> None:
 def test_importing_the_package_does_not_import_pillow() -> None:
     code = "import sys, tess_utils; sys.exit(1 if 'PIL' in sys.modules else 0)"
     assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0
+
+
+def test_no_max_side_sets_no_limit_of_ours() -> None:
+    data = _save(Image.new("L", (4097, 1)), "PNG")
+    assert decode_image(data, None)[:2] == (4097, 1)
+
+
+def test_a_file_decodes_like_its_bytes(tmp_path: Path) -> None:
+    data = _save(_split((8, 6)), "PNG")
+    target = tmp_path / "split.png"
+    target.write_bytes(data)
+    assert decode_image_file(target) == decode_image(data)
+    assert decode_image_file(str(target)) == decode_image(data)
+
+
+def test_a_file_has_no_size_limit_unless_asked(tmp_path: Path) -> None:
+    target = tmp_path / "wide.png"
+    target.write_bytes(_save(Image.new("L", (4097, 1)), "PNG"))
+    assert decode_image_file(target)[:2] == (4097, 1)
+    with pytest.raises(OSError, match=r"wide\.png.*4097x1.*limit of 4096"):
+        decode_image_file(target, 4096)
+
+
+@pytest.mark.parametrize("content", [None, b"x", b"", b"\x89PNG\r\n\x1a\n"])
+def test_an_unreadable_file_is_an_oserror_naming_the_path(
+    tmp_path: Path, content: bytes | None
+) -> None:
+    target = tmp_path / "broken.png"
+    if content is not None:
+        target.write_bytes(content)
+    with pytest.raises(OSError, match="cannot decode image .*broken.png"):
+        decode_image_file(target)
+
+
+def test_a_file_in_another_format_is_refused(tmp_path: Path) -> None:
+    target = tmp_path / "x.bmp"
+    target.write_bytes(_save(Image.new("RGB", (4, 4)), "BMP"))
+    with pytest.raises(OSError, match="not a png, jpeg, gif or webp image"):
+        decode_image_file(target)
+
+
+@pytest.mark.parametrize("path", [None, 5, b"x.png", ["x.png"], object()])
+def test_a_wrong_path_type_is_a_value_error(path: object) -> None:
+    with pytest.raises(ValueError, match="path"):
+        decode_image_file(path)
+
+
+@pytest.mark.parametrize("max_side", [True, 4096.0, "4096", 0, -1])
+def test_a_wrong_max_side_for_a_file_is_a_value_error(max_side: object) -> None:
+    with pytest.raises(ValueError, match="max_side"):
+        decode_image_file("x.png", max_side)

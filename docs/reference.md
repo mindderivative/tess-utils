@@ -9,9 +9,28 @@ otherwise raise `TypeError` for a wrongly typed argument).
 
 `parse_color(text) -> (r, g, b, a)`
 
-Reads `#RRGGBB`, `#RRGGBBAA` (alpha last), `#RGB`, `#RGBA`, `rgb(r g b)`, `rgba(r g b a)` (spaces
-or commas; red to blue 0 to 255, alpha 0.0 to 1.0) and `transparent`. Returns tre's `(r, g, b, a)`,
-each an integer 0 to 255. The `ValueError` names the bad part, also for a value that is not text.
+Reads a colour the way `tess_re` does, so every Tesserae project gives the same bytes for the same
+string, and returns tre's `(r, g, b, a)`, each an integer 0 to 255. Whitespace around the text is
+ignored.
+
+- Hex: `#RGB`, `#RGBA` (each digit doubled), `#RRGGBB`, `#RRGGBBAA` (alpha last).
+- A CSS colour name (the 148 of CSS Color 4, any case: `red`, `RebeccaPurple`) or `transparent`.
+- `rgb()`, `rgba()`, `hsl()`, `hsla()` in CSS Color 4 syntax: spaces or commas, alpha as a fourth
+  value or after a slash (`rgb(1 2 3 / 0.5)`), channels as numbers 0 to 255 or percentages, alpha
+  0.0 to 1.0 or a percentage, hue in degrees with an optional `deg`. A value out of range is
+  clipped, as CSS does.
+- `color(display-p3 ...)` and the other `color()` spaces (`srgb`, `srgb-linear`, `display-p3`,
+  `a98-rgb`, `prophoto-rgb`, `rec2020`, `xyz`, `xyz-d50`, `xyz-d65`), `lab()`, `lch()`, `oklab()`,
+  `oklch()` and `hwb()`, clipped into sRGB. They are computed in `f32` step for step as `tess_re`'s
+  colour crate does, so the bytes match.
+
+An alpha of 0.0 to 1.0 becomes 0 to 255 by rounding half up, as `tess_re` does (`0.3` is 77, not
+76).
+
+A colour it cannot read is a `ValueError` worded as `tess_re` words it: `wrong number of hex
+digits`, `unknown color identifier`, and `invalid color '<text>'` for the rest (the wide-gamut
+forms add the reason after a colon, such as `unknown color space`). A value that is not text is a
+`ValueError` too.
 
 ## Four-sided values
 
@@ -54,9 +73,19 @@ Decodes the bytes of a PNG, JPEG, GIF or WebP image. `rgba` is straight-alpha RG
   as alpha.
 - The header size is read first: a width or height over `max_side` is an error before any pixel is
   decoded. Pillow's decompression-bomb warning is turned into an error for the call only, and
-  Pillow's global limit is not touched.
+  Pillow's global limit is not touched. `max_side=None` sets no limit of ours (Pillow's own checks
+  stay): the consumer decides what is too large.
 - Another format (BMP, TIFF, SVG, text), empty, corrupt or truncated data, a zero-sized image and
   a wrong argument type are all `ValueError`; no Pillow exception escapes.
 
-Pillow is imported inside the function, so `import tess_utils` never loads it. It is not in the
+`decode_image_file(path, max_side=None) -> (width, height, rgba)`
+
+The same for a file, given as text or a path object: the result is that of `decode_image` of the
+file's bytes. There is no size limit unless the caller passes `max_side` (Pillow's own
+decompression-bomb error still applies above about 179 million pixels). A file that cannot be read
+or decoded (missing, unreadable, corrupt, truncated, another format, over `max_side`) is an
+`OSError` whose message names the path: `cannot decode image '<path>': <reason>`. A `path` that is
+neither text nor a path object, or a bad `max_side`, is a `ValueError`.
+
+Pillow is imported inside the functions, so `import tess_utils` never loads it. It is not in the
 compiled file: the caller installs it (`Pillow>=11`, the extra `image` of the source package).
