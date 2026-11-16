@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tess-utils"
+name = "tesserae-utils"
 dynamic = ["version"]
-description = "Shared converters for the Tesserae projects (private; not released on PyPI)."
+description = "Shared converters for the Tesserae projects: the value forms a TDL file writes, as the one form tre takes."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -13,7 +13,8 @@ requires-python = ">=3.14"
 authors = [{ name = "Mind Derivative" }]
 dependencies = []
 classifiers = [
-    "Private :: Do Not Upload",
+    "Development Status :: 3 - Alpha",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
@@ -33,6 +34,7 @@ dev = [
     "setuptools>=70",
     "pillow>=11",
 ]
+docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5"]
 
 [tool.hatch.version]
 path = "src/tess_utils/__init__.py"

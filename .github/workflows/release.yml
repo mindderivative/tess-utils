@@ -1,0 +1,136 @@
+# tess-utils release. Triggered only by a `vX.Y.Z` tag the maintainer pushes. Publishes the source
+# package to PyPI as `tesserae-utils` (import name `tess_utils`) with Trusted Publishing, no token,
+# and attaches the compiled single file the Tesserae consumers vendor to the GitHub release.
+#
+# One-time setup, by the maintainer (done 2026-11-15): a Trusted Publisher on PyPI for this
+# repository, workflow `release.yml`, environment `pypi`; the `pypi` environment in the repository
+# settings with the maintainer as the required reviewer. The agent never approves it.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Check, test and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv build --out-dir dist
+      - name: The tag, the built version, the changelog and the module agree
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # The sdist is named name-VERSION.tar.gz.
+          sdist=$(basename dist/*.tar.gz .tar.gz)
+          version=${sdist##*-}
+          [ "v$version" = "$TAG" ] || { echo "tag $TAG != built version $version"; exit 1; }
+          grep -Eq "^## ${version//./\\.}( |$)" CHANGELOG.md || { echo "CHANGELOG.md has no '## $version' section"; exit 1; }
+          python3 tools/sync_changelog.py --check
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Lint, types and tests pass
+        run: |
+          uv sync --locked
+          uv run ruff check src tests tools
+          uv run ruff format --check src tests tools
+          uv run mypy
+          uv run pytest -q
+      - name: The wheel imports in a clean environment, with the version it was built as
+        run: |
+          uv venv --python 3.14 /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python dist/*.whl
+          cd /tmp && /tmp/smoke/bin/python -I -c "import sys, tess_utils, importlib.metadata as m; v = m.version('tesserae-utils'); assert v == '$VERSION', v; bad = [n for n in sys.modules if n.split('.')[0] in ('PIL', 'tess_re', 'tess_el', 'tess_dl', 'tess_ui', 'tess_shell')]; assert not bad, bad"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7 # outlives the wait for the maintainer's approval of the pypi environment
+          if-no-files-found: error
+
+  compiled:
+    name: Compiled single file (mypyc)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked
+      # Builds build/so/{tess_utils.<soabi>.so, tess_utils.pyi, tess_utils.stamp.json} and runs the
+      # suite against the compiled file.
+      - run: uv run python tools/build_so.py --test
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: compiled
+          path: build/so/
+          retention-days: 7
+          if-no-files-found: error
+
+  pypi:
+    name: Publish to PyPI
+    needs: [build, compiled]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tesserae-utils/
+    permissions:
+      id-token: write # Trusted Publishing: the only permission this job has
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+
+  github-release:
+    name: GitHub Release
+    needs: pypi
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: compiled
+          path: compiled/
+      - name: The changelog section of this version is the release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$1 == "##" && $2 == v {on=1; next} /^## / && on {exit} on' CHANGELOG.md | head -c 100000 > notes.md
+          test -s notes.md
+      # The wheel and sdist, and the compiled file with its stub and stamp (what a consumer's sync
+      # script downloads and checks against the stamp's SHA-256).
+      - run: gh release create "$GITHUB_REF_NAME" dist/* compiled/* --title "$GITHUB_REF_NAME" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

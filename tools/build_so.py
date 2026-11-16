@@ -28,14 +28,31 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "tess_utils"
-MODULES = ("color", "sides", "radius", "enums", "image")  # independent of one another
+MODULES = ("colornames", "gamut", "color", "sides", "radius", "enums", "image")  # dependency order
 OUT = ROOT / "build" / "so"
 
 
+def _top_level_names(node: ast.stmt) -> list[str]:
+    """The names a top-level statement binds (def, class, assignment)."""
+    if isinstance(node, ast.FunctionDef | ast.ClassDef):
+        return [node.name]
+    if isinstance(node, ast.Assign):
+        return [t.id for t in node.targets if isinstance(t, ast.Name)]
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+        return [node.target.id]
+    return []
+
+
 def merged_source() -> str:
-    """One module with the modules' code and the package's public names."""
+    """One module with the modules' code and the package's public names.
+
+    A module may import an earlier one in ``MODULES`` (``color`` takes ``colornames`` and
+    ``gamut``): that import is dropped, the names are one namespace in the merged file, so a
+    top-level name used twice would clash and stops the build.
+    """
     imports: set[str] = set()
     parts: list[str] = []
+    defined: dict[str, str] = {}
     for name in MODULES:
         text = (SRC / f"{name}.py").read_text()
         tree = ast.parse(text)
@@ -46,11 +63,18 @@ def merged_source() -> str:
                 if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
                     "tess_utils"
                 ):
-                    raise SystemExit(f"{name}.py imports another tess_utils module: not mergeable")
+                    earlier = MODULES[: MODULES.index(name)]
+                    if (node.module or "").removeprefix("tess_utils.") not in earlier:
+                        raise SystemExit(f"{name}.py imports a tess_utils module not before it")
+                    continue
                 imports.add(ast.get_source_segment(text, node) or "")
             elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
                 continue  # the module docstring
             else:
+                for target in _top_level_names(node):
+                    if target in defined:
+                        raise SystemExit(f"{name}.py and {defined[target]}.py both define {target}")
+                    defined[target] = name
                 parts.append(ast.get_source_segment(text, node) or "")
     init = ast.parse((SRC / "__init__.py").read_text())
     version = next(
@@ -64,6 +88,7 @@ def merged_source() -> str:
         [
             "__version__",
             "decode_image",
+            "decode_image_file",
             "expand_radius",
             "expand_sides",
             "parse_color",

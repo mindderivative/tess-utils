@@ -1,0 +1,137 @@
+# tess-utils CI: tests, lint and types, the wheel in a clean environment, the compiled single-file
+# build with the suite run against it, and the docs build. `CI result` is the one check branch
+# protection should require. No paths-ignore: the docs build is a job here, and a skipped workflow
+# would leave required checks pending.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: Test (Py 3.14)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      # pyproject sets python-preference = "only-system": uv needs a system Python 3.14.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked
+      - run: uv run pytest -q
+
+  lint:
+    name: Lint & types
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked
+      # Python only: ruff's Markdown formatting would rewrite the README's code block.
+      - run: |
+          uv run ruff check src tests tools
+          uv run ruff format --check src tests tools
+          uv run mypy
+
+  package:
+    name: Wheel imports in a clean environment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv build --out-dir dist
+      - name: Install the wheel alone and import it
+        run: |
+          uv venv --python 3.14 /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python dist/*.whl
+          # -I: no user site, no cwd on the path, so only the wheel's own files are importable.
+          cd /tmp && /tmp/smoke/bin/python -I -c "
+          import sys, importlib.metadata as m, tess_utils
+          assert m.version('tesserae-utils') == tess_utils.__version__
+          bad = [n for n in sys.modules if n.split('.')[0] in ('PIL', 'tess_re', 'tess_el', 'tess_dl', 'tess_ui', 'tess_shell')]
+          assert not bad, bad"
+
+  compiled:
+    name: Compiled single file (mypyc) passes the suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked
+      - run: uv run python tools/build_so.py --test
+
+  docs:
+    name: Docs build (warnings are errors)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      NO_MKDOCS_2_WARNING: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: The site's changelog page is a current copy of CHANGELOG.md
+        run: python3 tools/sync_changelog.py --check
+      - run: uv run --python 3.14 --only-group docs mkdocs build --strict
+
+  # The one check to require in branch protection: it fails when any job above failed or was
+  # cancelled, and passes when all succeeded.
+  ci-result:
+    name: CI result
+    if: always()
+    needs: [test, lint, package, compiled, docs]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          for r in $RESULTS; do [ "$r" = "success" ] || { echo "a job did not succeed: $r"; exit 1; }; done
