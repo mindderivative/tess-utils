@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 from collections.abc import Sequence
 
 Radii = tuple[float, float, float, float]
